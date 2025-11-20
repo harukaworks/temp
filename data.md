@@ -14,3 +14,6 @@
 ## amount ： 数量（kg）
 ## CNY ： 贸易总额
 ## price : 单价 (CNY/kg)
+
+# 巴西数据
+> 巴西政府数据：[https://comexstat.mdic.gov.br/pt/home]

@@ -4,9 +4,10 @@ df1 = pd.read_csv('../dataset/2024in.csv', encoding='gbk')
 df2 = pd.read_csv('../dataset/2025in.csv', encoding='gbk')
 df3 = pd.read_csv('../dataset/2024out.csv', encoding='gbk')
 df4 = pd.read_csv('../dataset/2025out.csv', encoding='gbk')
+df5 = pd.read_csv('../dataset/2023.csv', encoding='gbk')
 
-df = pd.concat([df1, df2, df3, df4])
-del df1, df2, df3, df4
+df = pd.concat([df5, df1, df2, df3, df4])
+del df1, df2, df3, df4, df5
 
 df = df.replace(12011000, pd.NA)
 df.drop(df.columns[-1], axis=1, inplace=True)
