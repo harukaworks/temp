@@ -1,5 +1,3 @@
-from datetime import date
-
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -7,36 +5,47 @@ import matplotlib.pyplot as plt
 df = pd.read_csv('../dataset/merge.csv')
 df['date'] = pd.to_datetime(df['date'])
 
-location_names = {
-    402: 'Argentina',
-    410: 'Brazil',
-    502: 'USA'
-}
 
-product_names = {
-    12019019: 'GM Yellow Soybean',
-    12019011: 'Non-GM Yellow Soybean',
-    12019020: 'Black Soybean'
-}
+def decode_trade_partner(row):
+    """根据410和502列确定贸易伙伴"""
+    if row['410'] == 0 and row['502'] == 0:
+        return 'Argentina'
+    elif row['410'] == 1:
+        return 'Brazil'
+    elif row['502'] == 1:
+        return 'USA'
+    else:
+        return 'Unknown'
 
 
-import_products = [12019019]
-export_products = [12019011, 12019020]
+def decode_product_type(row):
+    """根据12019019和12019020列确定商品类型"""
+    if row['12019019'] == 1:
+        return 'GM Yellow Soybean'
+    elif row['12019020'] == 1:
+        return 'Black Soybean'
+    elif row['12019019'] == 0 and row['12019020'] == 0:
+        return 'Non-GM Yellow Soybean'
+    else:
+        return 'Unknown'
 
-import_data = df[df['item'].isin(import_products)]
-export_data = df[df['item'].isin(export_products)]
+df['trade_partner'] = df.apply(decode_trade_partner, axis=1)
+df['product_type'] = df.apply(decode_product_type, axis=1)
+
+import_data = df[df['product_type'] == 'GM Yellow Soybean']
+export_data = df[df['product_type'].isin(['Non-GM Yellow Soybean', 'Black Soybean'])]
 
 fig, axes = plt.subplots(2, 2, figsize=(16, 10))
-fig.suptitle('China Soybean Import Analysis', fontsize=16, fontweight='bold')
+fig.suptitle('China Soybean Import Analysis (GM Yellow Soybean)', fontsize=16, fontweight='bold')
 
 ax1 = axes[0, 0]
-for loc in import_data['loc'].unique():
-    loc_data = import_data[import_data['loc'] == loc]
-    if not loc_data.empty:
-        ax1.plot(loc_data['date'], loc_data['price'],
-                marker='o', linewidth=2, label=location_names[loc])
+for partner in import_data['trade_partner'].unique():
+    partner_data = import_data[import_data['trade_partner'] == partner]
+    if not partner_data.empty:
+        ax1.plot(partner_data['date'], partner_data['price'],
+                 marker='o', linewidth=2, label=partner)
 
-ax1.set_title('Import Price Trend')
+ax1.set_title('Import Price Trend by Trade Partner')
 ax1.set_xlabel('Date')
 ax1.set_ylabel('Price (CNY/kg)')
 ax1.legend()
@@ -44,11 +53,11 @@ ax1.grid(True, alpha=0.3)
 ax1.tick_params(axis='x', rotation=45)
 
 ax2 = axes[0, 1]
-for loc in import_data['loc'].unique():
-    loc_data = import_data[import_data['loc'] == loc]
-    if not loc_data.empty:
-        ax2.plot(loc_data['date'], loc_data['amount']/1e6,
-                marker='s', linewidth=2, label=location_names[loc])
+for partner in import_data['trade_partner'].unique():
+    partner_data = import_data[import_data['trade_partner'] == partner]
+    if not partner_data.empty:
+        ax2.plot(partner_data['date'], partner_data['amount'] / 1e6,
+                 marker='s', linewidth=2, label=partner)
 
 ax2.set_title('Import Quantity Trend')
 ax2.set_xlabel('Date')
@@ -57,13 +66,12 @@ ax2.legend()
 ax2.grid(True, alpha=0.3)
 ax2.tick_params(axis='x', rotation=45)
 
-
 ax3 = axes[1, 0]
-for loc in import_data['loc'].unique():
-    loc_data = import_data[import_data['loc'] == loc]
-    if not loc_data.empty:
-        ax3.plot(loc_data['date'], loc_data['CNY']/1e9,
-                marker='^', linewidth=2, label=location_names[loc])
+for partner in import_data['trade_partner'].unique():
+    partner_data = import_data[import_data['trade_partner'] == partner]
+    if not partner_data.empty:
+        ax3.plot(partner_data['date'], partner_data['CNY'] / 1e9,
+                 marker='^', linewidth=2, label=partner)
 
 ax3.set_title('Import Value Trend')
 ax3.set_xlabel('Date')
@@ -73,10 +81,9 @@ ax3.grid(True, alpha=0.3)
 ax3.tick_params(axis='x', rotation=45)
 
 ax4 = axes[1, 1]
-import_share = import_data.groupby('loc')['CNY'].sum()
-locations = [location_names[loc] for loc in import_share.index]
+import_share = import_data.groupby('trade_partner')['CNY'].sum()
 colors = ['#ff9999', '#66b3ff', '#99ff99']
-ax4.pie(import_share.values, labels=locations, autopct='%1.1f%%',
+ax4.pie(import_share.values, labels=import_share.index, autopct='%1.1f%%',
         colors=colors, startangle=90)
 ax4.set_title('Import Market Share by Value')
 
@@ -85,18 +92,16 @@ plt.savefig('../charts/soybean_import_analysis.png', dpi=300, bbox_inches='tight
 plt.show()
 
 fig, axes = plt.subplots(2, 2, figsize=(16, 10))
-fig.suptitle('China Soybean Export Analysis to USA', fontsize=16, fontweight='bold')
-
-usa_export = export_data[export_data['loc'] == 502]
+fig.suptitle('China Soybean Export Analysis', fontsize=16, fontweight='bold')
 
 ax1 = axes[0, 0]
-for item in usa_export['item'].unique():
-    item_data = usa_export[usa_export['item'] == item]
-    if not item_data.empty:
-        ax1.plot(item_data['date'], item_data['price'],
-                marker='o', linewidth=2, label=product_names[item])
+for product in export_data['product_type'].unique():
+    product_data = export_data[export_data['product_type'] == product]
+    if not product_data.empty:
+        ax1.plot(product_data['date'], product_data['price'],
+                 marker='o', linewidth=2, label=product)
 
-ax1.set_title('Export Price Trend by Product Type')
+ax1.set_title('Export Price Trend')
 ax1.set_xlabel('Date')
 ax1.set_ylabel('Price (CNY/kg)')
 ax1.legend()
@@ -104,11 +109,11 @@ ax1.grid(True, alpha=0.3)
 ax1.tick_params(axis='x', rotation=45)
 
 ax2 = axes[0, 1]
-for item in usa_export['item'].unique():
-    item_data = usa_export[usa_export['item'] == item]
-    if not item_data.empty:
-        ax2.plot(item_data['date'], item_data['amount'],
-                marker='s', linewidth=2, label=product_names[item])
+for product in export_data['product_type'].unique():
+    product_data = export_data[export_data['product_type'] == product]
+    if not product_data.empty:
+        ax2.plot(product_data['date'], product_data['amount'],
+                 marker='s', linewidth=2, label=product)
 
 ax2.set_title('Export Quantity Trend')
 ax2.set_xlabel('Date')
@@ -118,13 +123,13 @@ ax2.grid(True, alpha=0.3)
 ax2.tick_params(axis='x', rotation=45)
 
 ax3 = axes[1, 0]
-for item in usa_export['item'].unique():
-    item_data = usa_export[usa_export['item'] == item]
-    if not item_data.empty:
-        ax3.plot(item_data['date'], item_data['CNY'],
-                marker='^', linewidth=2, label=product_names[item])
+for product in export_data['product_type'].unique():
+    product_data = export_data[export_data['product_type'] == product]
+    if not product_data.empty:
+        ax3.plot(product_data['date'], product_data['CNY'],
+                 marker='^', linewidth=2, label=product)
 
-ax3.set_title('Export Value Trend by Product Type')
+ax3.set_title('Export Value Trend')
 ax3.set_xlabel('Date')
 ax3.set_ylabel('Value (CNY)')
 ax3.legend()
@@ -132,10 +137,9 @@ ax3.grid(True, alpha=0.3)
 ax3.tick_params(axis='x', rotation=45)
 
 ax4 = axes[1, 1]
-export_share = usa_export.groupby('item')['CNY'].sum()
-products = [product_names[item] for item in export_share.index]
+export_share = export_data.groupby('product_type')['CNY'].sum()
 colors = ['#ffcc99', '#c2c2f0']
-ax4.pie(export_share.values, labels=products, autopct='%1.1f%%',
+ax4.pie(export_share.values, labels=export_share.index, autopct='%1.1f%%',
         colors=colors, startangle=90)
 ax4.set_title('Export Product Share by Value')
 
@@ -146,13 +150,13 @@ plt.show()
 plt.figure(figsize=(14, 8))
 
 plt.subplot(2, 1, 1)
-for loc in import_data['loc'].unique():
-    loc_data = import_data[import_data['loc'] == loc]
-    if not loc_data.empty:
-        plt.plot(loc_data['date'], loc_data['price'],
-                marker='o', linewidth=2, label=f'Import from {location_names[loc]}')
+for partner in import_data['trade_partner'].unique():
+    partner_data = import_data[import_data['trade_partner'] == partner]
+    if not partner_data.empty:
+        plt.plot(partner_data['date'], partner_data['price'],
+                 marker='o', linewidth=2, label=f'Import from {partner}')
 
-plt.title('Soybean Import Price Comparison by Origin')
+plt.title('Soybean Import Price')
 plt.xlabel('Date')
 plt.ylabel('Price (CNY/kg)')
 plt.legend()
@@ -160,13 +164,13 @@ plt.grid(True, alpha=0.3)
 plt.xticks(rotation=45)
 
 plt.subplot(2, 1, 2)
-for item in usa_export['item'].unique():
-    item_data = usa_export[usa_export['item'] == item]
-    if not item_data.empty:
-        plt.plot(item_data['date'], item_data['price'],
-                marker='s', linewidth=2, label=f'Export {product_names[item]}')
+for product in export_data['product_type'].unique():
+    product_data = export_data[export_data['product_type'] == product]
+    if not product_data.empty:
+        plt.plot(product_data['date'], product_data['price'],
+                 marker='s', linewidth=2, label=f'Export {product}')
 
-plt.title('Soybean Export Price Comparison ')
+plt.title('Soybean Export Price')
 plt.xlabel('Date')
 plt.ylabel('Price (CNY/kg)')
 plt.legend()
